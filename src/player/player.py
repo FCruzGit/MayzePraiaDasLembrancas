@@ -1,11 +1,15 @@
 import os
 import pygame
 
+from src.config import ASSETS_DIR, PLAYER
+from src.player.combat import attack_area
+from src.player.movement import move_with_collision
+from src.systems.experience import apply_experience
 
-TAMANHO_PLAYER = (120, 90)
 
-VELOCIDADE_ANDANDO = 350
-VELOCIDADE_CORRENDO = 620
+TAMANHO_PLAYER = PLAYER["sprite_size"]
+VELOCIDADE_ANDANDO = PLAYER["walk_speed"]
+VELOCIDADE_CORRENDO = PLAYER["run_speed"]
 
 
 def carregar_imagem(caminho, tamanho=None):
@@ -58,7 +62,7 @@ def inverter_frames_horizontalmente(frames):
 
 class AssetsMayze:
     def __init__(self):
-        pasta_mayze = os.path.join("assets", "mayze")
+        pasta_mayze = str(ASSETS_DIR / "mayze")
 
         self.idle_right = carregar_imagem(
             os.path.join(pasta_mayze, "idle_right.png"),
@@ -136,19 +140,19 @@ class Player:
 
         self.nivel = 1
         self.xp = 0
-        self.xp_para_proximo_nivel = 5
+        self.xp_para_proximo_nivel = PLAYER["initial_xp_to_level"]
 
         self.pontos_habilidade = 0
         self.bonus_dano = 0
         self.bonus_velocidade = 0
         self.bonus_cura = 0
 
-        self.hp_max = 10
+        self.hp_max = PLAYER["max_hp"]
         self.hp = self.hp_max
 
         self.invulneravel = False
         self.tempo_invulneravel = 0
-        self.duracao_invulneravel = 0.8
+        self.duracao_invulneravel = PLAYER["invulnerability_seconds"]
 
         self.andando = False
         self.correndo = False
@@ -159,13 +163,13 @@ class Player:
         self.frame_atual = 0
         self.tempo_animacao = 0
 
-        self.velocidade_animacao_walk = 0.12
-        self.velocidade_animacao_run = 0.08
+        self.velocidade_animacao_walk = PLAYER["walk_animation_seconds"]
+        self.velocidade_animacao_run = PLAYER["run_animation_seconds"]
 
         self.tempo_acao = 0
-        self.duracao_ataque = 0.35
-        self.duracao_latido = 0.45
-        self.duracao_pickup = 0.55
+        self.duracao_ataque = PLAYER["attack_seconds"]
+        self.duracao_latido = PLAYER["bark_seconds"]
+        self.duracao_pickup = PLAYER["pickup_seconds"]
 
         self.tempo_parado = 0
 
@@ -187,14 +191,7 @@ class Player:
         self.tempo_invulneravel = 0
 
     def ganhar_xp(self, quantidade):
-        self.xp += quantidade
-
-        while self.xp >= self.xp_para_proximo_nivel:
-            self.xp -= self.xp_para_proximo_nivel
-            self.nivel += 1
-            self.pontos_habilidade += 1
-            self.xp_para_proximo_nivel += 3
-            self.hp = self.hp_max
+        apply_experience(self, quantidade, PLAYER["xp_growth_per_level"])
 
     def curar(self, quantidade):
         quantidade_total = quantidade + self.bonus_cura
@@ -209,17 +206,17 @@ class Player:
             return False
 
         if habilidade == "vida":
-            self.hp_max += 3
+            self.hp_max += PLAYER["skill_bonuses"]["health"]
             self.hp = self.hp_max
 
         elif habilidade == "dano":
-            self.bonus_dano += 1
+            self.bonus_dano += PLAYER["skill_bonuses"]["damage"]
 
         elif habilidade == "velocidade":
-            self.bonus_velocidade += 35
+            self.bonus_velocidade += PLAYER["skill_bonuses"]["speed"]
 
         elif habilidade == "cura":
-            self.bonus_cura += 1
+            self.bonus_cura += PLAYER["skill_bonuses"]["healing"]
 
         else:
             return False
@@ -246,39 +243,8 @@ class Player:
         self.direcao = "front"
 
     def area_de_ataque(self):
-        largura = 85
-        altura = 60
-
-        if self.direcao == "left":
-            return pygame.Rect(
-                self.hitbox.left - largura,
-                self.hitbox.centery - altura // 2,
-                largura,
-                altura
-            )
-
-        if self.direcao == "right":
-            return pygame.Rect(
-                self.hitbox.right,
-                self.hitbox.centery - altura // 2,
-                largura,
-                altura
-            )
-
-        if self.direcao == "back":
-            return pygame.Rect(
-                self.hitbox.centerx - largura // 2,
-                self.hitbox.top - altura,
-                largura,
-                altura
-            )
-
-        return pygame.Rect(
-            self.hitbox.centerx - largura // 2,
-            self.hitbox.bottom,
-            largura,
-            altura
-        )
+        largura, altura = PLAYER["attack_area"]
+        return attack_area(self.hitbox, self.direcao, largura, altura)
 
     def atualizar_rect_pela_hitbox(self):
         self.rect.x = self.hitbox.x - 30
@@ -390,25 +356,7 @@ class Player:
                 self.tempo_acao = 0
 
     def mover_com_colisao(self, dx, dy, objetos_solidos):
-        self.hitbox.x += dx
-
-        for objeto in objetos_solidos:
-            if self.hitbox.colliderect(objeto.hitbox):
-                if dx > 0:
-                    self.hitbox.right = objeto.hitbox.left
-                elif dx < 0:
-                    self.hitbox.left = objeto.hitbox.right
-
-        self.hitbox.y += dy
-
-        for objeto in objetos_solidos:
-            if self.hitbox.colliderect(objeto.hitbox):
-                if dy > 0:
-                    self.hitbox.bottom = objeto.hitbox.top
-                elif dy < 0:
-                    self.hitbox.top = objeto.hitbox.bottom
-
-        self.atualizar_rect_pela_hitbox()
+        move_with_collision(self, dx, dy, objetos_solidos)
 
     def atualizar_animacao_movimento(self, dt):
         if self.correndo:

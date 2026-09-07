@@ -1,8 +1,9 @@
 import math
 import pygame
 
-from inventario import Item
-from inimigo import Inimigo
+from src.config import BEACH_MAP
+from src.player.inventory import Item
+from src.enemies.types import create_crab
 
 
 COR_CEU = (117, 190, 224)
@@ -230,8 +231,8 @@ class ItemColetavel:
 
 class MapaPraia:
     def __init__(self):
-        self.largura = 2200
-        self.altura = 2600
+        self.largura = BEACH_MAP["width"]
+        self.altura = BEACH_MAP["height"]
 
         self.chunk_atual = "praia"
 
@@ -280,19 +281,19 @@ class MapaPraia:
         ]
 
         self.inimigos = [
-            Inimigo(620, 820, "Caranguejo Bravo", nivel=1, hp_max=3),
-            Inimigo(1250, 980, "Caranguejo Bravo", nivel=1, hp_max=3),
-            Inimigo(1540, 1660, "Caranguejo Bravo", nivel=2, hp_max=4),
-            Inimigo(780, 1960, "Caranguejo Ancião", nivel=2, hp_max=5),
+            create_crab(620, 820),
+            create_crab(1250, 980),
+            create_crab(1540, 1660, level=2, max_hp=4),
+            create_crab(780, 1960, name="Caranguejo Ancião", level=2, max_hp=5),
         ]
 
     def trocar_para_chunk(self, nome_chunk, player):
         self.chunk_atual = nome_chunk
 
         if nome_chunk == "inimigos":
-            player.renascer(980, 520)
+            player.renascer(*BEACH_MAP["enemy_area_spawn"])
         else:
-            player.renascer(980, 2300)
+            player.renascer(*BEACH_MAP["beach_return_spawn"])
 
     def objetos_solidos(self):
         if self.chunk_atual == "inimigos":

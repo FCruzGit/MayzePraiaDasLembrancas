@@ -1,5 +1,7 @@
 import pygame
 
+from src.config import ENEMY
+
 
 COR_SOMBRA = (0, 0, 0)
 COR_INIMIGO = (150, 90, 65)
@@ -35,8 +37,8 @@ class Inimigo:
         ]
 
         self.indice_ronda = 0
-        self.velocidade_ronda = 90
-        self.velocidade_raiva = 215
+        self.velocidade_ronda = ENEMY["patrol_speed"]
+        self.velocidade_raiva = ENEMY["chase_speed"]
 
         self.vivo = True
         self.agressivo = False
@@ -44,16 +46,16 @@ class Inimigo:
 
         self.tempo_raiva = 0
         self.tempo_entre_ataques = 0
-        self.cooldown_ataque = 0.85
+        self.cooldown_ataque = ENEMY["attack_cooldown_seconds"]
 
         self.dano = 1 + nivel // 2
         self.xp_recompensa = nivel + 1
 
-        self.distancia_visao = 430
-        self.distancia_desistir = 680
+        self.distancia_visao = ENEMY["view_distance"]
+        self.distancia_desistir = ENEMY["give_up_distance"]
 
         self.tempo_respawn = 0
-        self.tempo_para_respawnar = 10
+        self.tempo_para_respawnar = ENEMY["respawn_seconds"]
 
     @property
     def profundidade(self):
@@ -93,7 +95,7 @@ class Inimigo:
             dt
         )
 
-        if distancia_quadrada <= 95 * 95:
+        if distancia_quadrada <= ENEMY["attack_range"] ** 2:
             if self.tempo_entre_ataques >= self.cooldown_ataque:
                 player.receber_dano(self.dano)
                 self.tempo_entre_ataques = 0
